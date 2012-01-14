@@ -12,6 +12,9 @@ using Soup;
 
 namespace ValaRest {
 
+    /**
+     * Class to contain REST server mappings.
+     */
     public class RestMapping {
         public string mapping { get; set; }
         public RestObject obj { get; set; }
@@ -19,20 +22,46 @@ namespace ValaRest {
 
     public interface RestObject : GLib.Object {
 
+        public string get_mapping ( RestObject obj ) {
+            foreach ( RestMapping m in mappings ) {
+                if (m.obj == obj) {
+                    return m.mapping;
+                }
+            } // end foreach mappings
+            return "";
+        } // end get_mapping
+
         public void handler (Soup.Server server, Soup.Message msg,
                 string path, GLib.HashTable? query, Soup.ClientContext client) {
+            string subpath = path.replace(get_mapping(this), "");
+            string? id = (subpath != null && subpath.has_prefix("/")) ? subpath.substring(1) : null;
             if (msg.method == "GET") {
                 // GET: retrieve record
             } else if (msg.method == "POST") {
                 // POST: new record
             } else if (msg.method == "DELETE") {
                 // DELETE: remove record
+                if ( id != null ) {
+                    delete_object( id );
+                }
             } else {
                 msg.set_response (RESPONSE_TYPE, Soup.MemoryUse.COPY, ERROR_RESPONSE.printf("Invalid method.").data);
             }
         } // end handler
 
+        /**
+         * Delete an object by primary key.
+         */
+        public abstract void delete_object ( string pk );
+
+        /**
+         * Deserialize an object from a JSON string.
+         */
         public abstract RestObject deserialize ( string data );
+
+        /**
+         * Serialize a JSON string from an object.
+         */
         public abstract string serialize ( RestObject obj );
 
     } // end interface RestObject
